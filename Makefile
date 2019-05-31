@@ -19,7 +19,7 @@ endif
 LIBPATH = $(PREFIX)/lib
 INCLUDEPATH = $(PREFIX)/include
 
-all: pos_decode pos_decode_lib
+all: spaxxpos pos_decode_lib
 
 cssl.o:
 	libtool compile gcc -Wall -D_GNU_SOURCE -g -O -c cssl.c
@@ -28,10 +28,13 @@ pos_decode.o:	pos_decode.c
 	#libtool compile gcc -Wall -D_GNU_SOURCE -g -O -c test.c
 	gcc -Wall -D_GNU_SOURCE -g -O -mfpu=vfp -mfloat-abi=hard -lcssl -c pos_decode.c
 
-pos_decode: pos_decode.o cssl.o
-	gcc -g -O -o pos_decode pos_decode.o cssl.o
+spaxxpos: pos_decode.o cssl.o spaxxpos.o
+	gcc -g -O -o spaxxpos spaxxpos.o pos_decode.o cssl.o
 
-pos_decode_lib: pos_decode.o cssl.o
+spaxxpos.o:	spaxxpos.c
+	gcc -Wall -D_GNU_SOURCE -g -O -mfpu=vfp -mfloat-abi=hard -lcssl -c spaxxpos.c
+
+pos_decode_lib: pos_decode.o cssl.o 
 	gcc -g -O -shared -o pos_decode.so pos_decode.o cssl.o 
 
 clean:

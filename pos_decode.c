@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include "cssl.h"
 
-static int finished=0;
+
 //Resolution/increment of the magnetic AS5311 sensor, in mm/step
 #define AS5311_RESOLUTION 0.0004882
 
@@ -21,9 +21,9 @@ typedef struct  {
       float position_mm;
 } axis_struct;
       
-static axis_struct X_axis = {.name = 'X', .enc_value = 0, .prev_enc_value = 0 , .error = 0, .abs_position = 0};
+static axis_struct X_axis = {.name = 'X', .enc_value = 0, .prev_enc_value = 0 , .error = 0, .abs_position = 0, .position_mm=0};
 
-static axis_struct Y_axis = {.name = 'Y', .enc_value = 0, .prev_enc_value = 0 , .error = 0, .abs_position = 0};
+static axis_struct Y_axis = {.name = 'Y', .enc_value = 0, .prev_enc_value = 0 , .error = 0, .abs_position = 0, .position_mm=0};
 
 float get_x_pos(){
     return X_axis.position_mm;
@@ -60,7 +60,7 @@ static void read_axis(axis_struct* ptr_axis, uint16_t rcvd_encoder_val){
         ptr_axis->prev_enc_value = ptr_axis->enc_value;
         ptr_axis->position_mm = (float)AS5311_RESOLUTION*(ptr_axis->abs_position);
         //printf("%c %i %i %i \n",ptr_axis->name, ptr_axis->enc_value,  ptr_axis->prev_enc_value, ptr_axis->position);
-        printf("%c %.3f\n",ptr_axis->name, ptr_axis->position_mm);
+        //printf("%c %.3f\n",ptr_axis->name, ptr_axis->position_mm);
     }
     
 }
@@ -116,9 +116,10 @@ static void callback(int id, uint8_t *buf, int length)
 
 cssl_t *serial;
 
-int init_comm(){
+int init_comm(char* serial_port, int baudrate){
     cssl_start();
-    serial=cssl_open("/dev/ttyAMA0",callback,0,115200,8,0,1);
+    //serial=cssl_open("/dev/ttyAMA0",callback,0,115200,8,0,1);
+    serial=cssl_open(serial_port,callback,0,baudrate,8,0,1);
     if (!serial) {
 	printf("%s\n",cssl_geterrormsg());
 	return -1;
@@ -131,11 +132,3 @@ void shutdown(){
     cssl_stop();
 }
 
-int main()
-{
-    init_comm();
-    while (!finished) 
-        pause();
-    shutdown();
-    return 0;
-}

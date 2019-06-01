@@ -4,13 +4,11 @@ import time
 import os
 import sys
 import struct
-import ctypes
-import mmap
+import poslib
+from poslib import LinearPositionComm
+import threading
 
 myfolder = os.path.dirname(os.path.realpath(__file__))
-
-_pos_decode_lib = ctypes.CDLL(os.path.join(myfolder,'pos_decode.so'))
-_pos_decode_lib.init_comm.argtypes = ( ctypes.POINTER(ctypes.c_char), ctypes.c_int)
 
 configfile = os.path.join(myfolder,"dro.ini")
 os.chdir(myfolder)
@@ -27,14 +25,14 @@ except Exception, e:
 
 #time.sleep(2)
 
-print('Opening DRO port ' + port + ' at ' + baudrate)
-_pos_decode_lib.init_comm(port, int(baudrate))
-
 #time.sleep(2) #not working after the DLL init_commm has been called. Interference with the signal handler?
 
-print "-----------------"
-while(True):
-	print float(_pos_decode_lib.get_x_pos())
-	print float(_pos_decode_lib.get_y_pos())
+with LinearPositionComm(port, baudrate) as comm:
+    for i in range(1,100):
+        print "X%.3f "%comm.pos_receiver_lib.get_x_pos()
+        print "Y%.3f "%comm.pos_receiver_lib.get_y_pos()
+        stat = comm.pos_receiver_lib.get_axis_stat()
+        print "STAT X%i Y%i X%.3f Y%.3f"%(stat.xerror, stat.yerror, stat.xposition, stat.yposition)
 
-_pos_decode_lib.shutdown()
+
+

@@ -6,10 +6,12 @@
 #include <stdio.h>
 #include <unistd.h>
 #include "cssl.h"
-
-
+#include <sys/types.h>
+#include <sys/syscall.h>
+#include "pos_decode.h"
 //Resolution/increment of the magnetic AS5311 sensor, in mm/step
 #define AS5311_RESOLUTION 0.0004882
+static float as5311resolution = AS5311_RESOLUTION;
 
 typedef struct  {
       char name;
@@ -25,12 +27,26 @@ static axis_struct X_axis = {.name = 'X', .enc_value = 0, .prev_enc_value = 0 , 
 
 static axis_struct Y_axis = {.name = 'Y', .enc_value = 0, .prev_enc_value = 0 , .error = 0, .abs_position = 0, .position_mm=0};
 
+char bla[200];
+
+void setSensorResolution(float resolution){
+    as5311resolution = resolution;
+}
+
+axis_position_struct get_axis_stat(){
+    axis_position_struct ret = {.xerror = X_axis.last_error, .yerror = Y_axis.last_error, .xposition = X_axis.position_mm, .yposition = Y_axis.position_mm};
+    return ret;
+    //return X_axis.position_mm;
+}
+
 float get_x_pos(){
     return X_axis.position_mm;
 }
+
 float get_y_pos(){
     return Y_axis.position_mm;
 }
+
 //AS5311 delivers a 12 bit absolute position inside the 2 mm pole spacing
 //in order to detect the movement over the index position, we need to check if the previous absolute value is hear index 
 //and the actual position over it 
@@ -42,11 +58,11 @@ float get_y_pos(){
 static void read_axis(axis_struct* ptr_axis, uint16_t rcvd_encoder_val){
     if (rcvd_encoder_val >= 0xFF00) {//some read error
         ptr_axis->error = rcvd_encoder_val & 0x00FF; //lower byte
-        //printf("%c err %i %i\n", ptr_axis->name, highbyte, lowbyte);
-    }else{
         if (ptr_axis->error != 0){
             ptr_axis->last_error = ptr_axis->error;
-        }
+        }        
+        //printf("%c err %i %i\n", ptr_axis->name, highbyte, lowbyte);
+    }else{
         ptr_axis->error = 0;
         ptr_axis->enc_value = rcvd_encoder_val;
         int delta = ptr_axis->enc_value - ptr_axis->prev_enc_value;
@@ -58,28 +74,28 @@ static void read_axis(axis_struct* ptr_axis, uint16_t rcvd_encoder_val){
             ptr_axis->abs_position += delta;
         }
         ptr_axis->prev_enc_value = ptr_axis->enc_value;
-        ptr_axis->position_mm = (float)AS5311_RESOLUTION*(ptr_axis->abs_position);
+        ptr_axis->position_mm = (float)as5311resolution*(ptr_axis->abs_position);
         //printf("%c %i %i %i \n",ptr_axis->name, ptr_axis->enc_value,  ptr_axis->prev_enc_value, ptr_axis->position);
-        //printf("%c %.3f\n",ptr_axis->name, ptr_axis->position_mm);
     }
-    
 }
-/* callback gets called when the kernel signalises data arrival */
+
 uint16_t x_packet; 
 uint16_t y_packet;
 axis_struct* this_axis = 0;
 uint8_t parser_state = 0;
 uint16_t* pkt_ptr;
 
+//parser states
 #define AXIS_EXPECTED 1
 #define PAYLOAD_FOLLOWS AXIS_EXPECTED+1
 #define READING_PAYLOAD PAYLOAD_FOLLOWS+1
 #define PAYLOAD_READ_DONE READING_PAYLOAD+1
 
+/* callback function to be called by the cssl on data arrival */
 static void callback(int id, uint8_t *buf, int length)
 {
     //The data format consists of 4 bytes: axis name, upper byte, lower byte, CR
-    //Upper byte = 0xFF signalises an error. Error code is then the lower byte
+    //Upper byte = 0xFF signalises an error. Error code is then the lower byte	
     int i=0;
     for ( i=0; i<length; i++) {
         if (buf[i] == 'X') {
@@ -110,8 +126,7 @@ static void callback(int id, uint8_t *buf, int length)
         }
 
     }
-    //putchar(buf[i]);
-    fflush(stdout);
+    //putchar(buf[i]);    fflush(stdout);
 }
 
 cssl_t *serial;
@@ -121,8 +136,8 @@ int init_comm(char* serial_port, int baudrate){
     //serial=cssl_open("/dev/ttyAMA0",callback,0,115200,8,0,1);
     serial=cssl_open(serial_port,callback,0,baudrate,8,0,1);
     if (!serial) {
-	printf("%s\n",cssl_geterrormsg());
-	return -1;
+		printf("Cannot setup connection to %s %s\n",serial_port, cssl_geterrormsg());
+		return -1;
     }
     return 0;
 }

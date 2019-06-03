@@ -36,6 +36,9 @@ spaxxpos.o:	spaxxpos.c
 pos_decode_lib: pos_decode.o cssl.o rpm_meter.o
 	gcc -g -O -shared -o pos_decode.so pos_decode.o cssl.o rpm_meter.o -lpigpio
 
+#pos_decode_lib: pos_decode.o cssl.o
+#	gcc -g -O -shared -o pos_decode.so pos_decode.o cssl.o
+
 rpm_meter.o:	rpm_meter.c    
 	gcc  -std=gnu11 -Wall -D_GNU_SOURCE -g -c rpm_meter.c -lpigpio -lrt
 	#gcc -Wall -pthread -o test rpm_meter.c -lpigpio -lrt

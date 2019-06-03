@@ -1,5 +1,5 @@
 
-volatile float getRpm();
+volatile int get_rpm();
 int rpmmeterInitialize(int gpio_pin);
 void rpmmeterShutdown();
 

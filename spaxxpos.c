@@ -14,7 +14,7 @@ int main()
     while (!finished) {
         sleep(1);
         axis_position_struct ret = get_axis_stat();
-        printf("%i %i %i %i\n", ret.xerror, ret.yerror, ret.xposition, ret.yposition);
+        printf("%i %i %.3f %.3f\n", ret.xerror, ret.yerror, ret.xposition, ret.yposition);
 
     }
     shutdown();

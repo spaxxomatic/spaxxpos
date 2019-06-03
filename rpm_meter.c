@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <unistd.h>
-
+#include <math.h>
 #include <pigpio.h>
 #include "rpm_meter.h"
 /*
-2019-06-01
+2019-06-01 Lucian Nutiu lucian.nutiu@gmail.com
 
 gcc rpm_meter.c -lpigpio -lpthread
 
@@ -24,9 +24,9 @@ static uint16_t window_idx = 0;
 #endif
 static uint32_t ma_window_lastticks[MOVING_AVERAGE_WINDOW+1];
 
-volatile float getRpm(){
+volatile int get_rpm(){
     //for (int i = 0; i < MOVING_AVERAGE_WINDOW; i++) printf ("%i ",ma_window_lastticks[i]) ;
-    return rpm;
+    return (int) round(rpm*10)/10;;
 }
 
  
@@ -58,7 +58,6 @@ void isrCallback(int gpio, int level, uint32_t tick){
         //we do a 'little bit of' exp moving average to improve response
         else 
             rpm = (60*1000000)*((float)MOVING_AVERAGE_WINDOW+1)*2/((float)(dur*(MOVING_AVERAGE_WINDOW+1) + dur_accumulator));
-        
         lasttick = tick;
     }else if (level == PI_TIMEOUT){
         //stopped, empty the history
@@ -70,10 +69,16 @@ void isrCallback(int gpio, int level, uint32_t tick){
     //printf("dur %u RPM %.1f\n",dur, rpm); 
 };
    
+void setPwm(uint8_t pin, int freq, uint8_t fill_factor){
+   gpioSetMode(pin, PI_OUTPUT);
+   int iret = gpioSetPWMfrequency(pin, freq); //set pwm on GPIO 20 to a freq of 10 hz
+   printf ("PWM set to %i ", iret);
+   gpioPWM(pin, fill_factor); //send pulses of 1/255 fill factor 
+}
+    
 int rpmmeterInitialize(int gpio_pin)
-{   
-
-   gpioCfgClock(10, 0, 0); 
+{
+   //gpioCfgClock(10, 0, 0); 
    //int gpioCfgClock(unsigned cfgMicros, unsigned cfgPeripheral, unsigned cfgSource)
    //Configures pigpio to use a particular sample rate timed by a specified peripheral. 
    //This function is only effective if called before gpioInitialise. 
@@ -84,11 +89,6 @@ int rpmmeterInitialize(int gpio_pin)
    if (gpioInitialise()<0) return 1;
    printf("Installing ISR on gpio %i \n",  gpio_pin);
    fflush(stdout); 
-   
-   gpioSetMode(20, PI_OUTPUT);
-   int iret = gpioSetPWMfrequency(20, 100); //set pwm on GPIO 20 to a freq of 10 hz
-   printf ("PWM set to %i ", iret);
-   gpioPWM(20, 1); //send pulses of 1/255 fill factor 
    
    gpioSetPullUpDown(gpio_pin, PI_PUD_UP);
    //gpioSetPullUpDown(18, PI_PUD_DOWN); // Sets a pull-down.

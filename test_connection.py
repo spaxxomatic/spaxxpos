@@ -28,11 +28,14 @@ except Exception, e:
 #time.sleep(2) #not working after the DLL init_commm has been called. Interference with the signal handler?
 
 with LinearPositionComm(port, baudrate) as comm:
-    for i in range(1,100):
-        print "X%.3f "%comm.pos_receiver_lib.get_x_pos()
-        print "Y%.3f "%comm.pos_receiver_lib.get_y_pos()
+    for i in range(1,1000):
+        #print "X%.3f "%comm.pos_receiver_lib.get_x_pos()
+        #print "Y%.3f "%comm.pos_receiver_lib.get_y_pos()
         stat = comm.pos_receiver_lib.get_axis_stat()
-        print "STAT X%i Y%i X%.3f Y%.3f"%(stat.xerror, stat.yerror, stat.xposition, stat.yposition)
+        j=0
+        while(j < 10000):
+            j+=1
+        sys.stdout.write("STAT X%i Y%i X%.3f Y%.3f \r"%(stat.xerror, stat.yerror, stat.xposition, stat.yposition))
 
 
 

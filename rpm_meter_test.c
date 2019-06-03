@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <unistd.h>
-#include <math.h>
 #include <pigpio.h>
 #include "rpm_meter.h"
 
@@ -66,9 +65,9 @@ int main(int argc, char *argv[])
    if (rpmmeterInitialize(g_gpio)<0) return 1;
    while(1) {
         usleep(100000);
-        int rpm = (int) round(getRpm()*10)/10;
+        
         //printf("%i\n", (int) round((int)(rpm/10))*10);
-        printf("%i %i\n", rpm, jitter);
+        printf("%i %i\n", get_rpm(), jitter);
    }
    rpmmeterShutdown();
    return 0;

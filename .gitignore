@@ -2,4 +2,5 @@
 *.o
 *.pyc
 rpm_meter_test
+test_wavegen
 spaxxpos

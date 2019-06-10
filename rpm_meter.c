@@ -86,6 +86,7 @@ int rpmmeterInitialize(int gpio_pin)
    //cfgPeripheral: 0 (PWM), 1 (PCM)
    //cfgSource: deprecated, value is ignored
 
+   printf("Initializing pigpio\n"); 
    if (gpioInitialise()<0) return 1;
    printf("Installing ISR on gpio %i \n",  gpio_pin);
    fflush(stdout); 

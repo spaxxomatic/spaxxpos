@@ -1,0 +1,1 @@
+gcc  -std=gnu99 test_wavegen.c -o test_wavegen -lpigpio -lrt

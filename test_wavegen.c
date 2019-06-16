@@ -5,7 +5,8 @@
 #include <time.h>
 #include <sys/ioctl.h>
 #include <signal.h>
-
+ #include <unistd.h>
+ 
 int gpio=21;
 
 #define DUR_OFF 10
@@ -68,7 +69,7 @@ int rampup_wave(int duration){
    int wave_no = 0; 
    while (ramp_up > duration) {
        
-       #define NO_OF_PULSES_PER_RAMPSTEP 10
+       #define NO_OF_PULSES_PER_RAMPSTEP 4
        gpioPulse_t pulse[NO_OF_PULSES_PER_RAMPSTEP*2];
        for (int i= 0; i < 2*NO_OF_PULSES_PER_RAMPSTEP-1; i++){
        pulse[i].gpioOn = (1<<gpio);
@@ -82,12 +83,12 @@ int rampup_wave(int duration){
        gpioWaveAddGeneric(NO_OF_PULSES_PER_RAMPSTEP*2, pulse);
        int wave_id = gpioWaveCreate();
        gpioWaveTxSend(wave_id, PI_WAVE_MODE_REPEAT_SYNC);
-       //while (gpioWaveTxBusy())  time_sleep(0.01);   
-       //time_sleep(0.01);   
+       //gpioWaveTxSend(wave_id, PI_WAVE_MODE_ONE_SHOT);
+       //while (gpioWaveTxBusy())  usleep(10);   
+       //time_sleep(0.001);   
+       time_sleep(0.0001);   
        gpioWaveDelete(wave_id);
        ramp_up -= RAMP_STEP;
-       //fprintf(stderr, "add wave dur %i ", ramp_up);
-       //fflush(stderr);
     }
     //gpioWaveTxSend(wave_id, PI_WAVE_MODE_ONE_SHOT_SYNC); 
     //gpioWaveChain(wid, wave_no);

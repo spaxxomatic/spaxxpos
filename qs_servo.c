@@ -22,7 +22,7 @@ int fd = 0;
 static char *device = "/dev/spidev0.0"; //TODO:  move to the ini file
 static uint8_t mode;
 static uint8_t bits = 8;
-static uint32_t speed = 1000000; //TODO: move to the ini file
+static uint32_t speed = 0xff00; //TODO: move to the ini file
 static uint16_t delay;
 
 static uint8_t qscomm_status;
@@ -38,12 +38,37 @@ Interfaces via SPI to the RS485 arduino-based communcation adapter (QSCOMM) for 
 static void pabort(const char *s)
 {
 	perror("QSSERVO: ");
+    gpioTerminate();
     perror(s);
 	abort();
 }
 
-static uint8_t get_qs_status(){
+uint8_t get_qs_status(){
     return qscomm_status;
+}
+
+void fetch_servo_stat()
+{
+	int ret;
+    uint8_t fetch_command[] = {0xFF, 0xFF};
+	struct spi_ioc_transfer tr = {
+		.tx_buf = (unsigned long)fetch_command,
+		.rx_buf = (unsigned long)rx_buff,
+		.len = sizeof(fetch_command),
+		.delay_usecs = delay,
+		.speed_hz = speed,
+		.bits_per_word = bits,
+	};
+
+	ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr, sizeof(fetch_command));
+	if (ret < 1) pabort("can't send spi message");
+
+	for (ret = 0; ret < sizeof(fetch_command); ret++) {
+		printf(" R %.2X ", rx_buff[ret]);
+	}
+	//puts("");
+    
+    qscomm_status = rx_buff[sizeof(fetch_command)];
 }
 
 static void send_servo_msg(byte* tx_buff, int len)
@@ -73,16 +98,60 @@ void qs_set_stepdir(uint8_t addr){
     send_servo_msg(msg, sizeof(msg));
 }
 
-void qs_move_rel_velocitybased(uint8_t addr){
+void qs_mode_velocityimmediate(uint8_t addr, uint32_t velocity){
+  byte no_of_words  = 0xD;
+ 
+  byte msg[] = {addr, no_of_words, QS_CMD_MODE_VELOCITYIMMEDIATE,
+            0x00, 0x0f, 0xEA, 0x4B, //acceleration
+            velocity>>24, velocity>>16, velocity>>8, velocity&0x000000ff, //velocity
+            0x00, 0x00, 0x00, 0x00}; //stop enable / stop state
+  send_servo_msg(msg, sizeof(msg));
+ 
+}
+
+void qs_mode_velocitycontrol(uint8_t addr, uint32_t velocity){
+  byte no_of_words  = 0x4;
+ /* TBD
+  byte msg[] = {addr, no_of_words, QS_CMD_MOVEREL_VELOCITYBASED,
+            distance>>24, distance>>16, distance>>8, distance&0x000000ff, //distance
+            0x00, 0x0f, 0xEA, 0x4B, //acceleration
+            velocity>>24, velocity>>16, velocity>>8, velocity&0x000000ff, //velocity
+            0x00, 0x00, 0x00, 0x00}; //stop enable / stop state
+  send_servo_msg(msg, sizeof(msg));
+  */
+}
+
+void qs_move_rel_velocitybased(uint8_t addr, uint32_t velocity, uint32_t distance){
   byte no_of_words  = 0x11;
  
   byte msg[] = {addr, no_of_words, QS_CMD_MOVEREL_VELOCITYBASED,
-            0x00, 0x02, 0x27, 0x10, //distance
-            0x00, 0x14, 0xEA, 0x4B, //acceleration
-            0x22, 0xFF, 0x99, 0x7F, //velocity
+            distance>>24, distance>>16, distance>>8, distance&0x000000ff, //distance
+            0x00, 0x0f, 0xEA, 0x4B, //acceleration
+            velocity>>24, velocity>>16, velocity>>8, velocity&0x000000ff, //velocity
             0x00, 0x00, 0x00, 0x00}; //stop enable / stop state
-
   send_servo_msg(msg, sizeof(msg));
+}
+
+void qs_enable_motor_driver(uint8_t addr, char motor_enable){
+    uint8_t cmd = QS_CMD_ENABLE_MOTOR_DRIVER;
+    if (!motor_enable) cmd = QS_CMD_DISABLE_MOTOR_DRIVER;
+    byte msg[] = {addr, 1, cmd};
+    send_servo_msg(msg, sizeof(msg));
+}
+
+void qs_hard_stop(uint8_t addr){
+    byte msg[] = {addr, 1, QS_CMD_HARD_STOP};
+    send_servo_msg(msg, sizeof(msg));
+}
+
+void qs_stop_motion(uint8_t addr){
+    byte msg[] = {addr, 0x5, QS_CMD_STOP_MOTION, 0x00, 0xcf, 0xEA, 0x4B};
+    send_servo_msg(msg, sizeof(msg));
+}
+
+void qs_restart_proc(uint8_t addr){
+    byte msg[] = {addr, 0x1, QS_CMD_RESTART};
+    send_servo_msg(msg, sizeof(msg));
 }
 
 void isrQscommTxReqCallback(int gpio, int level, uint32_t tick){
@@ -90,17 +159,18 @@ void isrQscommTxReqCallback(int gpio, int level, uint32_t tick){
     //tick : The number of microseconds since boot
     //this wraps around from 2^32 to 0 roughly every 72 minutes
     uint32_t  dur = 0;
+    printf("txreq %i\n", level); 
     if (level == 0){
-        get_qs_status();
+        fetch_servo_stat();
     }else if (level == PI_TIMEOUT){
-
+        printf("TIMEOUT\n"); 
     }        
     //printf("dur %u RPM %.1f\n",dur, rpm); 
 };
    
 void setPwm(uint8_t pin, int freq, uint8_t fill_factor){
    gpioSetMode(pin, PI_OUTPUT);
-   int iret = gpioSetPWMfrequency(pin, freq); //set pwm on GPIO 20 to a freq of 10 hz
+   int iret = gpioSetPWMfrequency(pin, freq); //set pwm on the given GPIO to the freq 
    printf ("PWM set to %i ", iret);
    gpioPWM(pin, fill_factor); //send pulses of 1/255 fill factor 
 }
@@ -116,7 +186,10 @@ int qsServoInitialize(int gpio_pin)
    //cfgSource: deprecated, value is ignored
 
    printf("Initializing pigpio\n"); 
-   if (gpioInitialise()<0) return 1;
+   if (gpioInitialise()<0) {
+   gpioTerminate();
+   return 1;
+   }
    printf("Installing ISR on gpio %i \n",  gpio_pin);
    fflush(stdout); 
    
@@ -124,7 +197,7 @@ int qsServoInitialize(int gpio_pin)
    //gpioSetPullUpDown(18, PI_PUD_DOWN); // Sets a pull-down.
    //gpioSetPullUpDown(23, PI_PUD_OFF);  // Clear any pull-ups/downs.
    gpioSetMode(gpio_pin, PI_INPUT);
-   gpioSetISRFunc(gpio_pin, FALLING_EDGE, 2000, isrQscommTxReqCallback) ;
+   gpioSetISRFunc(gpio_pin, FALLING_EDGE, 0, isrQscommTxReqCallback) ;
 
 	fd = open(device, O_RDWR);
 	if (fd < 0)
@@ -170,6 +243,7 @@ int qsServoInitialize(int gpio_pin)
    
    return 0;
 }
+
 
 void qsServoShutdown(){
     gpioTerminate();

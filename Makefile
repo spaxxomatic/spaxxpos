@@ -19,7 +19,7 @@ endif
 LIBPATH = $(PREFIX)/lib
 INCLUDEPATH = $(PREFIX)/include
 
-all: spaxxpos pos_decode_lib
+all: spaxxpos qs_servo_test libs
 
 cssl.o:	cssl.c
 	gcc  -std=gnu11 -Wall -D_GNU_SOURCE -g -O -c cssl.c
@@ -27,14 +27,17 @@ cssl.o:	cssl.c
 pos_decode.o:	pos_decode.c
 	gcc  -std=gnu11 -Wall -D_GNU_SOURCE -g -O -mfpu=vfp -mfloat-abi=hard -lcssl -c pos_decode.c
 
+qs_servo_test: qs_servo.c qs_servo_test.c
+	gcc -o qs_servo_test qs_servo_test.c qs_servo.c -lpigpio -lpthread -lncurses
+
 spaxxpos: pos_decode.o cssl.o spaxxpos.o
 	gcc  -std=gnu11 -g -O -o spaxxpos spaxxpos.o pos_decode.o cssl.o
 
-spaxxpos.o:	spaxxpos.c
+spaxxpos.o: spaxxpos.c
 	gcc  -std=gnu11 -Wall -D_GNU_SOURCE -g -O -mfpu=vfp -mfloat-abi=hard -lcssl -c spaxxpos.c
 
-pos_decode_lib: pos_decode.o cssl.o rpm_meter.o
-	gcc -g -O -shared -o pos_decode.so pos_decode.o cssl.o rpm_meter.o -lpigpio
+libs: pos_decode.o cssl.o rpm_meter.o qs_servo.o
+	gcc -g -O -shared -o pos_decode.so pos_decode.o cssl.o rpm_meter.o qs_servo.c -lpigpio
 
 #pos_decode_lib: pos_decode.o cssl.o
 #	gcc -g -O -shared -o pos_decode.so pos_decode.o cssl.o

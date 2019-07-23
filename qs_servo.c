@@ -10,9 +10,10 @@
 #include <linux/types.h>
 #include <linux/spi/spidev.h>
 
+#include "qs_servo.h"
 #include "quicksilver_commands.h"
 
-#define byte uint8_t
+
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 byte tx_buff[128] = {0,};  
@@ -22,8 +23,27 @@ int fd = 0;
 static char *device = "/dev/spidev0.0"; //TODO:  move to the ini file
 static uint8_t mode;
 static uint8_t bits = 8;
-static uint32_t speed = 0xff00; //TODO: move to the ini file
-static uint16_t delay;
+/*
+  cdiv    speed
+     2    125.0 MHz
+     4     62.5 MHz
+     8     31.2 MHz
+    16     15.6 MHz
+    32      7.8 MHz
+    64      3.9 MHz
+   128     1953 kHz
+   256      976 kHz
+   512      488 kHz
+  1024      244 kHz
+  2048      122 kHz
+  4096       61 kHz
+  8192     30.5 kHz
+ 16384     15.2 kHz
+ 32768     7629 Hz
+*/ 
+//static uint32_t speed = 0xff00; //TODO: move to the ini file
+static uint32_t speed = 250000; //TODO: move to the ini file
+static uint16_t delay = 0;
 
 static uint8_t qscomm_status;
 /*
@@ -38,6 +58,7 @@ Interfaces via SPI to the RS485 arduino-based communcation adapter (QSCOMM) for 
 static void pabort(const char *s)
 {
 	perror("QSSERVO: ");
+    
     gpioTerminate();
     perror(s);
 	abort();
@@ -71,7 +92,7 @@ void fetch_servo_stat()
     qscomm_status = rx_buff[sizeof(fetch_command)];
 }
 
-static void send_servo_msg(byte* tx_buff, int len)
+void send_servo_msg(byte* tx_buff, int len)
 {
 	int ret;
 	struct spi_ioc_transfer tr = {
@@ -85,12 +106,22 @@ static void send_servo_msg(byte* tx_buff, int len)
 
 	ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr, len);
 	if (ret < 1) pabort("can't send spi message");
-
-	for (ret = 0; ret < len; ret++) {
-		printf("%.2X ", rx_buff[ret]);
+    printf("\r\nTX:");
+    int i ;
+	for ( i = 0; i < len; i++) {
+		printf("%.2X:", tx_buff[i]);
+	}
+    printf("\r\nRX:");
+	for (i = 0; i < len; i++) {
+		printf("%.2X:", rx_buff[i]);
 	}
 	puts("");
     
+}
+
+void reset_servo_comm_interface(){
+    byte msg[] = {0, 1, 'r'};
+    send_servo_msg(msg, sizeof(msg));
 }
 
 void qs_set_stepdir(uint8_t addr){
@@ -159,22 +190,15 @@ void isrQscommTxReqCallback(int gpio, int level, uint32_t tick){
     //tick : The number of microseconds since boot
     //this wraps around from 2^32 to 0 roughly every 72 minutes
     uint32_t  dur = 0;
-    printf("txreq %i\n", level); 
+    printf("txreq %i\r\n", level); 
     if (level == 0){
         fetch_servo_stat();
     }else if (level == PI_TIMEOUT){
-        printf("TIMEOUT\n"); 
+        printf("TIMEOUT\r\n"); 
     }        
     //printf("dur %u RPM %.1f\n",dur, rpm); 
 };
-   
-void setPwm(uint8_t pin, int freq, uint8_t fill_factor){
-   gpioSetMode(pin, PI_OUTPUT);
-   int iret = gpioSetPWMfrequency(pin, freq); //set pwm on the given GPIO to the freq 
-   printf ("PWM set to %i ", iret);
-   gpioPWM(pin, fill_factor); //send pulses of 1/255 fill factor 
-}
-    
+
 int qsServoInitialize(int gpio_pin)
 {
    //gpioCfgClock(10, 0, 0); 
@@ -185,12 +209,12 @@ int qsServoInitialize(int gpio_pin)
    //cfgPeripheral: 0 (PWM), 1 (PCM)
    //cfgSource: deprecated, value is ignored
 
-   printf("Initializing pigpio\n"); 
+   printf("Initializing pigpio\r\n"); 
    if (gpioInitialise()<0) {
    gpioTerminate();
    return 1;
    }
-   printf("Installing ISR on gpio %i \n",  gpio_pin);
+   printf("Installing ISR on gpio %i \r\n",  gpio_pin);
    fflush(stdout); 
    
    gpioSetPullUpDown(gpio_pin, PI_PUD_UP);
@@ -236,9 +260,9 @@ int qsServoInitialize(int gpio_pin)
 	if (ret == -1)
 		pabort("can't get max speed hz");
 
-	printf("spi mode: %d\n", mode);
-	printf("bits per word: %d\n", bits);
-	printf("max speed: %d Hz (%d KHz)\n", speed, speed/1000);
+	printf("spi mode: %d\r\n", mode);
+	printf("bits per word: %d\r\n", bits);
+	printf("max speed: %d Hz (%d KHz)\r\n", speed, speed/1000);
     //if we reached this point we must have a valid fd
    
    return 0;
@@ -246,8 +270,11 @@ int qsServoInitialize(int gpio_pin)
 
 
 void qsServoShutdown(){
+    printf("QS shutdown\r\n");
     gpioTerminate();
+    printf("GPIO closed\r\n");
     if (fd != 0){
+        printf("FD closed\r\n");
         close(fd);
     }
 }

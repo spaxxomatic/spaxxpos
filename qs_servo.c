@@ -26,7 +26,7 @@ byte tx_buff[128] = {0,};
 byte rx_buff[ARRAY_SIZE(tx_buff)] = {0, };
 int fd = 0;
 
-static char *device = "/dev/spidev0.0"; //TODO:  move to the ini file
+static char *spi_device ; 
 static uint8_t mode;
 static uint8_t bits = 8;
 static int trace_level = 0;
@@ -41,12 +41,24 @@ static int dir_y_pin;
 static uint8_t addr_x;
 static uint8_t addr_y; 
 
+static char *SPI_QS_ERRORCODES_STRINGS[] = {
+    FOREACH_ELEM(GENERATE_STRING)
+};
+
+
 int get_qs_comm_error(){
     return qs_comm_error ;
 }
 
 char* get_error_txt(){
     return qs_comm_error_txt;
+}
+
+
+char* getSpiCommMsgText(uint8_t errorCode){
+    if (errorCode <= LASTELEM)
+        return SPI_QS_ERRORCODES_STRINGS[errorCode];
+    else  return "SPI_ERR_UNKNOWN" ;
 }
 
 void set_qs_comm_error(int error){
@@ -270,7 +282,8 @@ void isrQscommTxReqCallback(int gpio, int level, uint32_t tick){
     //printf("dur %u RPM %.1f\n",dur, rpm); 
 };
 
-int qsServoInitialize(int qs_comm_isr_gpio_pin,int p_step_x_pin, int p_dir_x_pin, int p_step_y_pin, int p_dir_y_pin, int mot_addr_x, int mot_addr_y)
+int qsServoInitialize(char* p_spi_device, int qs_comm_isr_gpio_pin,int p_step_x_pin, int p_dir_x_pin, 
+        int p_step_y_pin, int p_dir_y_pin, int mot_addr_x, int mot_addr_y, int x_axis_counts_per_mm, int y_axis_counts_per_mm)
 {
    //gpioCfgClock(10, 0, 0); 
    //int gpioCfgClock(unsigned cfgMicros, unsigned cfgPeripheral, unsigned cfgSource)
@@ -279,7 +292,7 @@ int qsServoInitialize(int qs_comm_isr_gpio_pin,int p_step_x_pin, int p_dir_x_pin
    //cfgMicros: 1, 2, 4, 5, 8, 10
    //cfgPeripheral: 0 (PWM), 1 (PCM)
    //cfgSource: deprecated, value is ignored
-
+   spi_device = p_spi_device;
    trace_msg(0, "Initializing pigpio\r\n"); 
    if (gpioInitialise()<0) {
    gpioWaveClear();
@@ -295,8 +308,13 @@ int qsServoInitialize(int qs_comm_isr_gpio_pin,int p_step_x_pin, int p_dir_x_pin
    dir_y_pin = p_dir_y_pin;
    addr_x = mot_addr_x;
    addr_y = mot_addr_y;
+   enc_x_axis_counts_per_mm = x_axis_counts_per_mm;
+   enc_y_axis_counts_per_mm = y_axis_counts_per_mm;
+
    trace_msg(0, "Init stepdir: step_x_pin %i dir_x_pin %i step_y_pin %i  dir_y pin %i\n", step_x_pin, dir_x_pin, step_y_pin, dir_y_pin);
-   
+   trace_msg(0, "X motor addr %i\n", addr_x);
+   trace_msg(0, "Y motor addr %i\n", addr_y);
+
    gpioSetMode(step_x_pin, PI_OUTPUT);
    gpioSetMode(dir_x_pin, PI_OUTPUT);
    gpioSetMode(step_y_pin, PI_OUTPUT);
@@ -308,9 +326,9 @@ int qsServoInitialize(int qs_comm_isr_gpio_pin,int p_step_x_pin, int p_dir_x_pin
    gpioSetMode(qs_comm_isr_gpio_pin, PI_INPUT);
    gpioSetISRFunc(qs_comm_isr_gpio_pin, FALLING_EDGE, 0, isrQscommTxReqCallback) ;
 
-	fd = open(device, O_RDWR);
+	fd = open(spi_device, O_RDWR);
 	if (fd < 0)
-		pabort("can't open device");
+		pabort("can't open spi device");
 
 	/*
 	 * spi mode

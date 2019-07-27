@@ -30,7 +30,8 @@ volatile int get_rpm(){
 }
 
 void (*rpm_sensor_pulse_callback) (uint32_t)  = NULL;
-void register_rpm_sensor_pulse_callback(void *rsp_callback(uint32_t)){ //function blocks 
+
+void register_rpm_sensor_pulse_callback(void rsp_callback(uint32_t)){ 
     rpm_sensor_pulse_callback = rsp_callback;
 } 
 

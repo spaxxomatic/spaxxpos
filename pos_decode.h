@@ -9,4 +9,4 @@ axis_position_struct get_axis_stat();
 float get_x_pos();
 float get_y_pos();
 int init_comm(char* serial_port, int baudrate);
-void shutdown();
+void pos_decoder_shutdown();

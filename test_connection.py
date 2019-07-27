@@ -29,9 +29,9 @@ except Exception, e:
 
 with LinearPositionComm(port, baudrate) as comm:
     for i in range(1,1000):
-        #print "X%.3f "%comm.pos_receiver_lib.get_x_pos()
-        #print "Y%.3f "%comm.pos_receiver_lib.get_y_pos()
-        stat = comm.pos_receiver_lib.get_axis_stat()
+        #print "X%.3f "%comm.spaxxlib.get_x_pos()
+        #print "Y%.3f "%comm.spaxxlib.get_y_pos()
+        stat = comm.spaxxlib.get_axis_stat()
         j=0
         while(j < 10000):
             j+=1

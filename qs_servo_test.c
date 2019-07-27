@@ -22,9 +22,7 @@ void usage()
    fprintf
    (stderr,
       "\n" \
-      "Usage: sudo qs_servo_test gpio_pin servo_address\n" \
-      "The gpio pin is connected to the TX_REQ pin of the QSCOMM adapter" \
-      "The servo address is the address of one connected quicksilver servomotor " \
+      "Usage: sudo qs_servo_test servo_address_x servo_address_y\n" \
       "\n"
    );
 }
@@ -61,21 +59,30 @@ void shutdown(int dummy) {
 
 #define QS_COMM_GPIO_PIN 4
 
+#define CK_VALID_ADDR(x)  if (! ((x>0) && (x<126) ) )  fatal(1, "%d is not a valid servo address\n", x);
+
+#define X_ENC_STEPS_MM 1000
+#define Y_ENC_STEPS_MM 1000
+
 int main(int argc, char *argv[])
 {
    cbreak();
    
-   uint8_t test_addr = 0;
-   if (argc != 2){
-        fatal(1, "Exactly one servo address must be specified");        
+   if (argc != 3){
+        fatal(1, "X and Y servo addresses must be specified");        
    }
-   int g = 0;
-   g = atoi(argv[1]);
-   if ((g>=0) && (g<126)){
-         test_addr = g;         
-   }else fatal(1, "%d is not a valid servo address\n", g);
    
-   if (qsServoInitialize(QS_COMM_GPIO_PIN, GPIO_STEP_X, GPIO_DIR_X, GPIO_STEP_Y, GPIO_DIR_Y)<0) return 1;
+   uint8_t test_addr_x = atoi(argv[1]); CK_VALID_ADDR(test_addr_x);
+   uint8_t test_addr_y = atoi(argv[2]); CK_VALID_ADDR(test_addr_y);
+
+   if (! ((test_addr_y>0) && (test_addr_y<126) ) )  fatal(1, "%d is not a valid servo address\n", test_addr_y);
+   char* spi_device =  "/dev/spidev0.0";
+   if (qsServoInitialize(spi_device, QS_COMM_GPIO_PIN, 
+      GPIO_STEP_X, GPIO_DIR_X, GPIO_STEP_Y, GPIO_DIR_Y, 
+      test_addr_x, test_addr_y,
+      X_ENC_STEPS_MM, 
+      Y_ENC_STEPS_MM
+      ) <0 ) return 1;
    set_trace_level(3);
     
     signal(SIGINT, shutdown);
@@ -91,7 +98,9 @@ int main(int argc, char *argv[])
    int wave_duration = 1000;
    
    //enable step/dir
-  qs_set_stepdir(test_addr); 
+  qs_set_stepdir(test_addr_x); 
+  qs_set_stepdir(test_addr_y); 
+  uint8_t test_addr = test_addr_x;
    while(1) {
         usleep(10000);
         c = getchar();
@@ -101,9 +110,6 @@ int main(int argc, char *argv[])
         switch (c){
         case 'S':
             fetch_comm_module_stat();
-            break;     
-        case 's':
-            qs_set_stepdir(test_addr); 
             break;     
         case '!':
             send_servo_msg(test_eroneous_msg, sizeof(test_eroneous_msg));

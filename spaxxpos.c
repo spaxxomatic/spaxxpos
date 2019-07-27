@@ -17,6 +17,6 @@ int main()
         printf("%i %i %.3f %.3f\n", ret.xerror, ret.yerror, ret.xposition, ret.yposition);
 
     }
-    shutdown();
+    pos_decoder_shutdown();
     return 0;
 }

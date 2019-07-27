@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include "rpm_meter.h"
 #include "qs_servo.h"
 

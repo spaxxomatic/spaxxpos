@@ -1,4 +1,7 @@
 
+#ifndef _spi_proto_h
+#define _spi_proto_h
+
 #define FOREACH_ELEM(ERRCODE) \
         ERRCODE(ACK_OK)   \
         ERRCODE(ACK_NOK)  \
@@ -19,13 +22,6 @@ enum SPI_QS_ERRORCODES {
     LASTELEM = ERR_QS_COMM_TIMEOUT
 };
 
-static const char *SPI_QS_ERRORCODES_STRINGS[] = {
-    FOREACH_ELEM(GENERATE_STRING)
-};
+char* getSpiCommMsgText(uint8_t errorCode);
 
-static const char* getSpiCommMsgText(uint8_t errorCode){
-    if (errorCode <= LASTELEM)
-        return SPI_QS_ERRORCODES_STRINGS[errorCode];
-    else  return "SPI_ERR_UNKNOWN" ;
-}
-
+#endif

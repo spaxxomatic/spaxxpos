@@ -28,17 +28,17 @@ except Exception, e:
 #time.sleep(2)
 
 #time.sleep(2) #not working after the DLL init_commm has been called. Interference with the signal handler?
-try:
-    with LinearPositionComm(port, baudrate, rpm_meter_pin) as comm:
+
+with LinearPositionComm(config) as comm:
+        for i in range(1,10):
+            
         for i in range(1,1000):
-        #print "X%.3f "%comm.pos_receiver_lib.get_x_pos()
-        #print "Y%.3f "%comm.pos_receiver_lib.get_y_pos()
-            rpm = comm.pos_receiver_lib.get_rpm()
+        #print "X%.3f "%comm.spaxxlib.get_x_pos()
+        #print "Y%.3f "%comm.spaxxlib.get_y_pos()
+            rpm = comm.spaxxlib.get_rpm()
             j=0
             while(j < 1000):
                 j+=1
             sys.stdout.write("RPM %i \r"%(rpm))
-except Exception , e:
-    print "Exception in the LinearPositionComm: %s"%str(e)
 
 

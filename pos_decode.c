@@ -142,7 +142,7 @@ int init_comm(char* serial_port, int baudrate){
     return 0;
 }
 
-void shutdown(){
+void pos_decoder_shutdown(){
     cssl_close(serial);
     cssl_stop();
 }

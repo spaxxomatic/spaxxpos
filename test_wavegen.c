@@ -52,12 +52,22 @@ int rampup_wave(int duration){
    return 0;
 }
 
+void usage()
+{
+   fprintf
+   (stderr,
+      "\n" \
+      "Usage: sudo test_wavegen gpio_pin pulse_duration\n" \
+      "\n"
+   );
+   exit(1);
+}
+
+
+#define CK_VALID_ADDR(x)  if (! ((x>0) && (x<26) ) )  fatal(1, "%d is not a valid gpio \n", x);
+
 int start_wave(int on){
-    //gpioWaveClear();
-   //fprintf(stderr, "start wave %i ", on);
-   //fflush(stderr);
-//   gpioWaveClear();
-   
+
    gpioPulse_t pulse[2];
    pulse[0].gpioOn = (1<<gpio);
    pulse[0].gpioOff = 0;
@@ -88,10 +98,25 @@ int start_wave(int on){
    return 0;
 }
 
+void shutdown(int dummy) {
+   gpioWaveClear();
+   gpioTerminate();
+   exit(EXIT_FAILURE);
+}
+
 int main(int argc, char *argv[])
 {
    int on=1000;
+    
+    signal(SIGINT, shutdown);
+    signal(SIGCONT, shutdown);
+    signal(SIGTERM, shutdown);
+       
    
+   if (argc <= 2){
+       usage();
+   }   
+
    if (argc > 3)
    {
       gpioInitialise();

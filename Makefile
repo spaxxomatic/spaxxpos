@@ -24,6 +24,9 @@ all: spaxxpos qs_servo_test libs
 cssl.o:	cssl.c
 	gcc  -std=gnu11 -Wall -D_GNU_SOURCE -g -O -c cssl.c
 
+motion.o: motion.c motion.h
+	gcc -std=gnu11 -Wall -D_GNU_SOURCE -g -c  motion.c
+
 pos_decode.o:	pos_decode.c
 	gcc  -std=gnu11 -Wall -D_GNU_SOURCE -g -O -mfpu=vfp -mfloat-abi=hard -lcssl -c pos_decode.c
 
@@ -39,7 +42,7 @@ spaxxpos: pos_decode.o cssl.o spaxxpos.o
 spaxxpos.o: spaxxpos.c
 	gcc  -std=gnu11 -Wall -D_GNU_SOURCE -g -O -mfpu=vfp -mfloat-abi=hard -lcssl -c spaxxpos.c
 
-libs: pos_decode.o cssl.o rpm_meter.o qs_servo.o
+libs: pos_decode.o cssl.o rpm_meter.o qs_servo.o motion.o
 	gcc -g -O -shared -o spaxxlib.so pos_decode.o cssl.o rpm_meter.o qs_servo.o -lpigpio
 
 #pos_decode_lib: pos_decode.o cssl.o

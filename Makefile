@@ -27,8 +27,11 @@ cssl.o:	cssl.c
 pos_decode.o:	pos_decode.c
 	gcc  -std=gnu11 -Wall -D_GNU_SOURCE -g -O -mfpu=vfp -mfloat-abi=hard -lcssl -c pos_decode.c
 
-qs_servo_test: qs_servo.c qs_servo_test.c
-	gcc -o qs_servo_test qs_servo_test.c qs_servo.c -lpigpio -lpthread -lncurses
+qs_servo_test: qs_servo.o qs_servo_test.c 
+	gcc  -std=gnu11 -Wall -o qs_servo_test qs_servo_test.c qs_servo.c -lpigpio -lpthread -lncurses
+
+qs_servo.o: qs_servo.c qs_servo.h spi_proto.h
+	gcc -std=gnu11 -Wall -D_GNU_SOURCE -g -c  qs_servo.c 
 
 spaxxpos: pos_decode.o cssl.o spaxxpos.o
 	gcc  -std=gnu11 -g -O -o spaxxpos spaxxpos.o pos_decode.o cssl.o
@@ -37,7 +40,7 @@ spaxxpos.o: spaxxpos.c
 	gcc  -std=gnu11 -Wall -D_GNU_SOURCE -g -O -mfpu=vfp -mfloat-abi=hard -lcssl -c spaxxpos.c
 
 libs: pos_decode.o cssl.o rpm_meter.o qs_servo.o
-	gcc -g -O -shared -o pos_decode.so pos_decode.o cssl.o rpm_meter.o qs_servo.c -lpigpio
+	gcc -g -O -shared -o spaxxlib.so pos_decode.o cssl.o rpm_meter.o qs_servo.o -lpigpio
 
 #pos_decode_lib: pos_decode.o cssl.o
 #	gcc -g -O -shared -o pos_decode.so pos_decode.o cssl.o
@@ -50,4 +53,4 @@ rpm_meter_test:	rpm_meter.o  rpm_meter_test.c
 	gcc  -std=gnu11 -Wall -O -o rpm_meter_test rpm_meter_test.c rpm_meter.o -lpigpio -lm -lrt
     
 clean:
-	rm -fr .libs spaxxpos rpm_meter_test *.la *.lo *.o *.so
+	rm -fr .libs spaxxpos rpm_meter_test qs_servo_test *.la *.lo *.o *.so *.pyc

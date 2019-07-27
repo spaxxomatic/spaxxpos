@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "QS_SERVO_TEST.C": "cpp",
+        "QS_SERVO.C": "cpp",
+        "TEST_WAVEGEN.C": "cpp"
+    }
+}

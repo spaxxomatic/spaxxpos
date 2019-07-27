@@ -5,7 +5,7 @@
 #include <time.h>
 #include <sys/ioctl.h>
 #include <signal.h>
- #include <unistd.h>
+#include <unistd.h>
  
 int gpio=21;
 
@@ -13,52 +13,6 @@ int gpio=21;
 #define RAMP_STEP 1 //each pulse during the ramp up period will be shorter by this value
 
 int start_wave(int on);
-
-/*
-int rampup_wave(int duration){
-   printf("Rampup to %i", duration);
-//   gpioWaveClear();
-   
-   int ramp_up = 1000;
-   char wid[10*ramp_up/RAMP_STEP];
-   int wave_no = 0; 
-   while (ramp_up > duration) {
-       
-       gpioPulse_t pulse[2];
-       pulse[0].gpioOn = (1<<gpio);
-       pulse[0].gpioOff = 0;
-       pulse[0].usDelay = ramp_up;
-
-       pulse[1].gpioOn = 0;
-       pulse[1].gpioOff = (1<<gpio);
-       pulse[1].usDelay = DUR_OFF;
-       
-       gpioWaveAddGeneric(2, pulse);
-       
-       int wave_id = gpioWaveCreate();
-       if (wave_id > 100){       
-            //too many waves, need to start sending them
-            //fprintf(stderr, "Will send a set of %i \n", wave_no);
-            gpioWaveChain(wid, wave_no);
-            while (gpioWaveTxBusy())  time_sleep(0.001);   
-            for (int i=0; i<wave_no; i++) gpioWaveDelete(wid[i]);
-            wave_no = 0;
-       }else {
-            wid[wave_no] = wave_id;
-            ramp_up -= RAMP_STEP;
-            wave_no+=1;       
-       }
-       //fprintf(stderr, "add wave dur %i ", ramp_up);
-       //fflush(stderr);
-    }
-    //gpioWaveTxSend(wave_id, PI_WAVE_MODE_ONE_SHOT_SYNC); 
-    gpioWaveChain(wid, wave_no);
-    while (gpioWaveTxBusy())  time_sleep(0.001);   
-    start_wave(duration);
-    for (int i=0; i<wave_no; i++) gpioWaveDelete(wid[i]);
-   return 0;
-}
-*/
 
 int rampup_wave(int duration){
    printf("Rampup to %i", duration);

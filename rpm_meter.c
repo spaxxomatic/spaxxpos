@@ -29,7 +29,11 @@ volatile int get_rpm(){
     return (int) round(rpm*10)/10;;
 }
 
- 
+void (*rpm_sensor_pulse_callback) (uint32_t)  = NULL;
+void register_rpm_sensor_pulse_callback(void *rsp_callback(uint32_t)){ //function blocks 
+    rpm_sensor_pulse_callback = rsp_callback;
+} 
+
 void isrCallback(int gpio, int level, uint32_t tick){
     //tick : The number of microseconds since boot
     //this wraps around from 2^32 to 0 roughly every 72 minutes
@@ -59,6 +63,8 @@ void isrCallback(int gpio, int level, uint32_t tick){
         else 
             rpm = (60*1000000)*((float)MOVING_AVERAGE_WINDOW+1)*2/((float)(dur*(MOVING_AVERAGE_WINDOW+1) + dur_accumulator));
         lasttick = tick;
+        if (rpm_sensor_pulse_callback != NULL) 
+            rpm_sensor_pulse_callback(dur);
     }else if (level == PI_TIMEOUT){
         //stopped, empty the history
         for (int i = 0; i < MOVING_AVERAGE_WINDOW; i++) ma_window_lastticks[i] = 0;
@@ -75,7 +81,7 @@ void setPwm(uint8_t pin, int freq, uint8_t fill_factor){
    printf ("PWM set to %i ", iret);
    gpioPWM(pin, fill_factor); //send pulses of 1/255 fill factor 
 }
-    
+
 int rpmmeterInitialize(int gpio_pin)
 {
    //gpioCfgClock(10, 0, 0); 

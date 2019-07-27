@@ -45,7 +45,7 @@ void fatal(int show_usage, char *fmt, ...)
    exit(EXIT_FAILURE);
 }
 
-uint32_t distance = 0x00004000; //distance   
+uint32_t distance = 4000; //distance   
 uint32_t speed = 0xF0000; //distance   
 
 void shutdown(int dummy) {
@@ -54,27 +54,29 @@ void shutdown(int dummy) {
     exit(EXIT_FAILURE);
 }
 
+#define GPIO_STEP_X 21
+#define GPIO_DIR_X 20
+#define GPIO_STEP_Y 16
+#define GPIO_DIR_Y 19
+
+#define QS_COMM_GPIO_PIN 4
 
 int main(int argc, char *argv[])
 {
    cbreak();
-   int g_gpio;
-   int g_num_gpios = 0;
+   
    uint8_t test_addr = 0;
-   if (argc != 3){
-        fatal(1, "Exactly one gpio and one servo address must be specified");        
+   if (argc != 2){
+        fatal(1, "Exactly one servo address must be specified");        
    }
    int g = 0;
    g = atoi(argv[1]);
-   if ((g>=0) && (g<32)){
-         g_gpio = g;         
-   }else fatal(1, "%d is not a valid g_gpio number\n", g);
-   g = atoi(argv[2]);
    if ((g>=0) && (g<126)){
          test_addr = g;         
    }else fatal(1, "%d is not a valid servo address\n", g);
    
-   if (qsServoInitialize(g_gpio)<0) return 1;
+   if (qsServoInitialize(QS_COMM_GPIO_PIN, GPIO_STEP_X, GPIO_DIR_X, GPIO_STEP_Y, GPIO_DIR_Y)<0) return 1;
+   set_trace_level(3);
     
     signal(SIGINT, shutdown);
     signal(SIGCONT, shutdown);
@@ -84,14 +86,25 @@ int main(int argc, char *argv[])
    initscr(); 
    char c;
    char motor_enable = 1;
-   byte test_eroneous_msg[] = {1, 5, 0};    
+   byte test_eroneous_msg[] = {1, 5, 0};  
+   
+   int wave_duration = 1000;
+   
+   //enable step/dir
+  qs_set_stepdir(test_addr); 
    while(1) {
         usleep(10000);
         c = getchar();
+        
         if (c == 'q') break;
+        
         switch (c){
+        case 'S':
+            fetch_comm_module_stat();
+            break;     
         case 's':
-            fetch_servo_stat(); break;     
+            qs_set_stepdir(test_addr); 
+            break;     
         case '!':
             send_servo_msg(test_eroneous_msg, sizeof(test_eroneous_msg));
             break;               
@@ -119,16 +132,25 @@ int main(int argc, char *argv[])
           qs_mode_velocityimmediate(test_addr, speed); break;                 
           break;        
         case '8':
-          distance += 0xFF; 
+          distance += 4000; 
           printf("Distance %i \r\n", distance);          
           break;
         case '2':
-          distance -= 0x0F;
+          distance -= 4000;
           printf("Distance %i \r\n", distance);
-          break;                   
-        };
+          break;     
+        case 'w':
+          if (wave_duration > 0) wave_duration -= 10;
+          start_wave('X', wave_duration);
+          printf("Freq %i \r\n", 1000000/wave_duration);
+          break; 
+        case 'W':
+          wave_duration += 10;
+          start_wave('X', wave_duration);
+          printf("Freq %i \r\n", 1000000/wave_duration);
+          break;
+        }  
         //printf("%i\n", (int) round((int)(rpm/10))*10);
-        printf("%i %i\r\n", get_qs_status());
    }
    endwin();
    qsServoShutdown();
